@@ -20,6 +20,7 @@ for file in os.listdir("cogs"):
     if file.endswith(".py"):
         name = file[:-3]
         bot.load_extension(f"cogs.{name}")
+        print(f'Loaded extension: {name}')
 
 try:
     bot.run(config["token"])
