@@ -17,16 +17,19 @@ class Information(commands.Cog):
     @commands.command()
     async def ping(self, ctx):
         """ Pong! """
+        print("received Ping")
         before = time.monotonic()
         before_ws = int(round(self.bot.latency * 1000, 1))
         message = await ctx.send("🏓 Pong")
+        print("sent Pong")
         ping = (time.monotonic() - before) * 1000
         await message.edit(content=f"🏓 WS: {before_ws}ms  |  REST: {int(ping)}ms")
 
-    @commands.command(aliases=['joinme', 'join', 'botinvite'])
-    async def invite(self, ctx):
-        """ Invite me to your server """
-        await ctx.send(f"**{ctx.author.name}**, use this URL to invite me\n<{discord.utils.oauth_url(self.bot.user.id)}>")
+    # ByteBot is private, should he go public, uncomment this block: 
+    # @commands.command(aliases=['joinme', 'join', 'botinvite'])
+    # async def invite(self, ctx):
+    #     """ Invite me to your server """
+    #     await ctx.send(f"**{ctx.author.name}**, use this URL to invite me\n<{discord.utils.oauth_url(self.bot.user.id)}>")
 
     @commands.command()
     async def source(self, ctx):
@@ -34,7 +37,7 @@ class Information(commands.Cog):
         # Do not remove this command, this has to stay due to the GitHub LICENSE.
         # TL:DR, you have to disclose source according to MIT.
         # Reference: https://github.com/AlexFlipnote/discord_bot.py/blob/master/LICENSE
-        await ctx.send(f"**{ctx.bot.user}** is powered by this source code:\nhttps://github.com/AlexFlipnote/discord_bot.py")
+        await ctx.send(f"**{ctx.bot.user}** is originally powered by this source code:\nhttps://github.com/AlexFlipnote/discord_bot.py\nModified Code base: ")
 
     @commands.command(aliases=['supportserver', 'feedbackserver'])
     async def botserver(self, ctx):
@@ -43,7 +46,7 @@ class Information(commands.Cog):
             return await ctx.send(f"**Here you go {ctx.author.name} 🍻\n<{self.config['botserver']}>**")
         await ctx.send(f"**{ctx.author.name}** this is my home you know :3")
 
-    @commands.command(aliases=['info', 'stats', 'status'])
+    @commands.command(aliases=['info', 'stats'])
     async def about(self, ctx):
         """ About the bot """
         ramUsage = self.process.memory_full_info().rss / 1024**2
