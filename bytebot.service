@@ -1,0 +1,14 @@
+[Unit]
+Description=ByteBot
+After=network-online.target
+
+[Service]
+User=root
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=/home/steam/discord_bot.py
+#Environment=/bin/python3
+ExecStart=/bin/bash -c "python3 -u /home/steam/discord_bot.py/index.py"
+
+[Install]
+WantedBy=multi-user.target
