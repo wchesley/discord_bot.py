@@ -1,8 +1,10 @@
 import os
 import discord
+import logging
 
 from utils import default
 from utils.data import Bot, HelpFormat
+from data.mongoDB import MongoDB_Context
 
 config = default.config()
 print("Logging in...")
@@ -20,9 +22,16 @@ for file in os.listdir("cogs"):
     if file.endswith(".py"):
         name = file[:-3]
         bot.load_extension(f"cogs.{name}")
-        print(f'Loaded extension: {name}')
+        logging.info(f'Loaded extension: {name}')
+
+try:
+    print(f"Testing connection to mongoDB instance at {config['db_url']}")
+    db = MongoDB_Context()
+#
+except Exception as e:
+    print(f'Error connecting to database: {e}')
 
 try:
     bot.run(config["token"])
 except Exception as e:
-    print(f'Error when logging in: {e}')
+    logging.error(f'Error when logging in: {e}')
