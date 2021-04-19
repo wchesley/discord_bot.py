@@ -85,7 +85,7 @@ class ValheimLogDog:
                 split = message.split(' ')
                 toon = split[4] # Should be ZDOID (in game toon name)
                 # Don't want to update database while testing...
-                #new_death_count = MongoDB_Context.update_death_count(1)
+                new_death_count = MongoDB_Context.update_death_count(1)
                 #self.bot.emmit('on_death',toon,new_death_count) ## Emmit death event: 
                 return f'{toon} death!' 
             full_message = message.replace(zDOID_connect,'')
