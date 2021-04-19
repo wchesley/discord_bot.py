@@ -18,8 +18,9 @@ SLEEP_SECONDS = 1
 
 class ValheimLogDog:
 
-    def __init__(self):
+    def __init__(self, bot):
         self.config = default.config()
+        self.bot = bot
         self.data = {
             'SteamID':'',
             'ZDOID':'',
@@ -29,18 +30,18 @@ class ValheimLogDog:
         }
 
     def start(self):
-        logging.debug(f"Fetching log file at: {self.config['log_file']}")
+        print(f"Fetching log file at: {self.config['log_file']}")
         with open(self.config['log_file'], 'r') as log_file:
-            logging.debug(f'opened context for log file at: {log_file}')
+            print(f'opened context for log file at: {log_file}')
             for new_lines in self.line_watcher(log_file):
-                logging.debug(f'Processing the lines found...')
+                print(f'Processing the lines found...')
                 new_lines = self.filter_lines(new_lines)
-                logging.debug(f'\t> Processed lines: {new_lines}')
+                print(f'\t> Processed lines: {new_lines}')
 
                 for line in new_lines:
                     #parse lines read here:
                     log_line = LogLine(line)
-                    log_line.extract_log_parts()
+                    self.extract_log_parts(log_line.message,log_line.date)
 
     def line_watcher(self, file):
         """Generator function that returns the new line entered."""
@@ -52,13 +53,13 @@ class ValheimLogDog:
             new_lines = file.readlines()
             # sleep if file hasn't been updated
             if not new_lines:
-                logging.debug(f'No new lines. Sleeping {SLEEP_SECONDS}')
+                print(f'No new lines. Sleeping {SLEEP_SECONDS}')
                 time.sleep(SLEEP_SECONDS)
                 continue
-            logging.debug('New line(s) found!')
+            print('New line(s) found!')
 
             for l in new_lines:
-                logging.debug('\t> {}'.format(l.replace('\n', '')))
+                print('\t> {}'.format(l.replace('\n', '')))
 
             yield new_lines
     
@@ -71,29 +72,32 @@ class ValheimLogDog:
         # Trailing space on the end is intentional, needed to remove that part of the log message
         steam_connect_msg = 'Got connection SteamID '
         zDOID_connect = 'Got character ZDOID from '
-        current_connections = ['Connections', 'ZDOS:']
+        current_connections = 'Connections'
         disconnect = "Closing Socket "
+        print(f'message: {message}')
         if steam_connect_msg in message:
             self.data['SteamID'] = message.replace(steam_connect_msg, '')
             self.data['steam_login_time'] = date
-            return self.message.replace(steam_connect_msg,'')
+            return self.data['SteamID']
         elif zDOID_connect in message:
             # Death message: Got character ZDOID from Bytes : 0:0
-            if self.message[:-1] == "0":
-                split = self.message.split(' ')
+            if message[-1] == "0":
+                split = message.split(' ')
                 toon = split[4] # Should be ZDOID (in game toon name)
-                new_death_count = MongoDB_Context.update_death_count(1)
-                
-                pass #process death here: 
+                # Don't want to update database while testing...
+                #new_death_count = MongoDB_Context.update_death_count(1)
+                #self.bot.emmit('on_death',toon,new_death_count) ## Emmit death event: 
+                return f'{toon} death!' 
             full_message = message.replace(zDOID_connect,'')
             full_message = full_message.split(' ')
             return full_message[0]
-        elif current_connections in message:
+        elif current_connections in message: 
+            print(f'current connections: {message}')
             connections = message.split(' ')
             # log message should look like: 'Connections 1 ZDOS:130588  sent:0 recv:422'
             return connections[1]
         elif disconnect in message:
-            return self.message.replace(disconnect,'') # Should be steamID of player who disconnected
+            return message.replace(disconnect,'') # Should be steamID of player who disconnected
 
     def compare_login_time(self, steam_login_time, zdoid_login_time):
         time_diff = steam_login_time - zdoid_login_time
