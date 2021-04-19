@@ -1,6 +1,7 @@
 import discord
 import psutil
 import os
+import random
 
 from datetime import datetime
 from discord.ext import commands
@@ -85,6 +86,23 @@ class Events(commands.Cog):
 
         # Indicate that the bot has successfully booted up
         print(f'Ready: {self.bot.user} | Servers: {len(self.bot.guilds)}')
+
+    @commands.Cog.listener()
+    async def on_death(self, death_count, player_name):
+        """ Announce death of player in valheim Server """
+        death_message = [ 
+            "was squased by a troll",
+            "fell victim to gredwarves",
+            "ascended to the 10th dead world",
+            "was fondled by greylings",
+            "took a deathsquito from behind",
+            "was collected by the Valkyrie",
+            "failed Odin's test",
+        ]
+        # Knights of Ni Bot Spam Channel ID: 831250902470885406
+        bot_spam = self.bot.channel.get(831250902470885406)
+        bot_spam.send(f'RIP {player_name} {random.choice(death_message)}')
+
 
 
 def setup(bot):
