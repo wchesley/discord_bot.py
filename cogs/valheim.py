@@ -8,6 +8,9 @@ from datetime import datetime
 from requests import get
 from discord.ext import commands
 from utils import permissions, default
+from data.mongoDB import MongoDB_Context
+
+mongo = MongoDB_Context()
 
 class Valheim(commands.Cog):
     def __init__(self, bot):
@@ -91,6 +94,13 @@ class Valheim(commands.Cog):
         if hasattr(ctx, 'guild') and ctx.guild is not None:
             await ctx.send(f"Sending you a private message with server public IP **{ctx.author.name}**")
         await ctx.author.send(f"🎁 **Public IP:**\n{ip}")
+
+    @commands.command()
+    @commands.is_owner()
+    async def update_death(self,ctx):
+        """Bytes utility method to artificially increase total death count"""
+        count = MongoDB_Context.update_death_count(mongo,1)
+        await ctx.send(f"Increased death count, we up to: {count}")
 
  
 def setup(bot):
