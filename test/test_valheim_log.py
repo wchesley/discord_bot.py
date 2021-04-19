@@ -1,8 +1,17 @@
 import unittest
 from valheim_server.log_dog import ValheimLogDog
+from utils import default
+config = default.config()
+from mongoengine import *
+
+class TestDeathDocument(Document):
+    key = UUIDField(primary_key=True)
+    death_count = IntField(min=0)
+
 
 class TestValheimLog(unittest.TestCase):
     def setUp(self):
+        connect('bytebot_test_db', host=f"mongomock://localhost")
         self.test_log_message_Steam = 'Got connection SteamID 76561197999876368'
         self.test_log_date_Steam = "04/12/2021 19:35:20"
         self.test_log_message_zDOID = 'Got character ZDOID from Halfdan : 3267341458:1'
