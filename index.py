@@ -5,6 +5,7 @@ import logging
 from utils import default
 from utils.data import Bot, HelpFormat
 from data.mongoDB import MongoDB_Context
+from valheim_server.log_dog import ValheimLogDog
 
 config = default.config()
 print("Logging in...")
@@ -30,6 +31,12 @@ try:
 #
 except Exception as e:
     print(f'Error connecting to database: {e}')
+
+try:
+    print(f'opening log file:')
+    ValheimLogDog(bot).start()
+except Exception as e:
+    print(f'error getting log file: {e}')
 
 try:
     bot.run(config["token"])
