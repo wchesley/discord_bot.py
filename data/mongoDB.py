@@ -44,7 +44,7 @@ class MongoDB_Context():
     def update_online_count(self):
         pass
 
-    def update_death_count(self, new_count):
+    def update_death_count(new_count):
         # Key: 472bc69c-e35b-4f5a-b3d7-999def8c4e27
         try:
             death_object = TotalDeaths.objects.get(key='472bc69c-e35b-4f5a-b3d7-999def8c4e27')
