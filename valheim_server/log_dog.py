@@ -29,9 +29,9 @@ class ValheimLogDog:
             'online':False,
         }
 
-    def start(self):
+    async def start(self):
         print(f"Fetching log file at: {self.config['log_file']}")
-        with open(self.config['log_file'], 'r') as log_file:
+        with await open(self.config['log_file'], 'r') as log_file:
             print(f'opened context for log file at: {log_file}')
             for new_lines in self.line_watcher(log_file):
                 print(f'Processing the lines found...')
@@ -86,7 +86,7 @@ class ValheimLogDog:
                 toon = split[4] # Should be ZDOID (in game toon name)
                 # Don't want to update database while testing...
                 new_death_count = MongoDB_Context.update_death_count(1)
-                #self.bot.emmit('on_death',toon,new_death_count) ## Emmit death event: 
+                self.bot.emmit('on_death',toon,new_death_count) ## Emmit death event: 
                 return f'{toon} death!' 
             full_message = message.replace(zDOID_connect,'')
             full_message = full_message.split(' ')
