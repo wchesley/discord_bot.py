@@ -1,12 +1,14 @@
-import os
+import os, tracemalloc, sys
 import discord
 import logging
+import concurrent.futures
 
 from utils import default
 from utils.data import Bot, HelpFormat
 from data.mongoDB import MongoDB_Context
 from valheim_server.log_dog import ValheimLogDog
 
+# tracemalloc.start()
 config = default.config()
 print("Logging in...")
 
@@ -25,20 +27,29 @@ for file in os.listdir("cogs"):
         bot.load_extension(f"cogs.{name}")
         logging.info(f'Loaded extension: {name}')
 
-try:
-    print(f"Testing connection to mongoDB instance at {config['db_url']}")
-    db = MongoDB_Context()
-#
-except Exception as e:
-    print(f'Error connecting to database: {e}')
+# try:
+#     print(f"Testing connection to mongoDB instance at {config['db_url']}")
+#     db = MongoDB_Context()
+# #
+# except Exception as e:
+#     print(f'Error connecting to database: {e}')
 
-try:
-    print(f'opening log file:')
-    ValheimLogDog(bot).start()
-except Exception as e:
-    print(f'error getting log file: {e}')
-
-try:
-    bot.run(config["token"])
-except Exception as e:
-    logging.error(f'Error when logging in: {e}')
+# try:
+#     print(f'opening log file:')
+#     bot.loop.create_task(ValheimLogCog(bot))
+# except Exception as e:
+#     print(f'error getting log file: {e}')
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    try:
+        print('starting log_dog: ')
+        log = "null?"
+        try:
+            log = executor.submit(ValheimLogDog.start, bot)
+        except Exception as e:
+            print(f'log thread state?: {log.running()}\nERROR: {e}')
+        print(f'log_thread state: {log.running()}')
+        executor.submit(bot.run(config["token"]))
+    except Exception as e:
+        print(f'other error: {e}')
+        sys.exit()
+    
