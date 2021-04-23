@@ -83,7 +83,8 @@ class Events(commands.Cog):
             ),
             status=status_type.get(status, discord.Status.online)
         )
-
+        # Start background thread to watch valhiem log file: 
+        #ValheimLogCog(self.bot)
         # Indicate that the bot has successfully booted up
         print(f'Ready: {self.bot.user} | Servers: {len(self.bot.guilds)}')
 
@@ -98,12 +99,16 @@ class Events(commands.Cog):
             "took a deathsquito from behind",
             "was collected by the Valkyrie",
             "failed Odin's test",
+            "In Soviet Russia, tree fell you!"
         ]
         # Knights of Ni Bot Spam Channel ID: 831250902470885406
         bot_spam = self.bot.channel.get(831250902470885406)
-        bot_spam.send(f'RIP {player_name} {random.choice(death_message)}')
+        bot_spam.send(f'RIP {player_name} {random.choice(death_message)}\nTotal Vikings lost: {death_count}')
 
-
+    @commands.Cog.listener()
+    async def on_disconnect(self):
+        print('disconnect event received, closing down: ')
+        self.bot.close()
 
 def setup(bot):
     bot.add_cog(Events(bot))
