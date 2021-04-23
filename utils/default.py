@@ -3,9 +3,12 @@ import json
 import discord
 import traceback
 import timeago as timesince
+from threading import Lock
 
 from io import BytesIO
 
+#Print lock var: 
+s_print_lock = Lock()
 
 def config(filename: str = "config"):
     """ Fetch default config file """
@@ -73,3 +76,15 @@ async def prettyResults(ctx, filename: str = "Results", resultmsg: str = "Here's
         content=resultmsg,
         file=discord.File(data, filename=timetext(filename.title()))
     )
+
+def s_print(*a, **b):
+    """ Thread safe print function
+    
+    Keyword arguments:
+    
+    *a -- positional arguement
+    **b -- keyword arguments
+
+    """
+    with s_print_lock:
+        print(*a, **b)
