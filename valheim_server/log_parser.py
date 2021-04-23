@@ -2,6 +2,7 @@ import os
 import re
 import logging
 import datetime
+import datefinder
 
 from datetime import datetime
 
@@ -9,32 +10,7 @@ from datetime import datetime
 class LogLine:
     def __init__(self, log_line):
         self.log_line = log_line
-        self.date, self.message = self.extract_prefix_from_string()
-
-    def extract_log_parts(self):
-        """Get the goods from the valheim log message"""
-        # Trailing space on the end is intentional, needed to remove that part of the log message
-        steam_connect_msg = 'Got connection SteamID '
-        zDOID_connect = 'Got character ZDOID from '
-        current_connections = ['Connections', 'ZDOS:']
-        disconnect = "Closing Socket "
-        if steam_connect_msg in self.message:
-            self.data['SteamID'] = self.message.replace(steam_connect_msg, '')
-            return self.message.replace(steam_connect_msg, '')
-        elif zDOID_connect in self.message:
-            # Death message: Got character ZDOID from Bytes : 0:0
-            if self.message[:-1] == "0":
-                pass  # process death here:
-            full_message = self.message.replace(zDOID_connect, '')
-            full_message = full_message.split(' ')
-            return full_message[0]
-        elif current_connections in self.message:
-            connections = self.message.split(' ')
-            # log message should look like: 'Connections 1 ZDOS:130588  sent:0 recv:422'
-            return connections[1]
-        elif disconnect in self.message:
-            # Should be steamID of player who disconnected
-            return self.message.replace(disconnect, '')
+        #self.date, self.message = self.remove_date()
 
     def remove_text_inside_brackets(text, brackets="{}[]()"):
         """Helper function to remove brackets, and text within them, from string"""
@@ -56,32 +32,23 @@ class LogLine:
                     saved_chars.append(character)
         # Rejoin the characters into a string: 
         message = ''.join(saved_chars)
+        print(f'Messsage before strip: {message}')
         # Remove any trailing or leading whitespace
         message = message.strip()
+        print(f'returning: {message}')
         return message
 
     def remove_date(log_line):
         """ Remove date from valheim server log message, retuns message and date as datetime object."""
         # Incoming format has to be: 04/12/2021 19:55:55: Closing socket 76561197999876368
-        # Call remove_text_inside_brackets() to remove the bracket prefix first!
-        if log_line[0] == '[':
-            print(f'bad input removing prefix: {log_line}')
-            log_line = LogLine.remove_date(log_line)
-        split = log_line.split(' ',2)
-        for s in split:
-            print(f'Split: {s}')
-        # after split, first and second index has the date plus trailing ':'
-        date = split[0] +' ' + split[1]
-        logging.info(f'removing {date} from {log_line}')
-        message = log_line.replace(date + ' ', '').strip()
-        print(f'message is now: {message}')
-        # Remove trailing ':' from date:
-        new_date = date[:len(date) - 1]
-        logging.info(f'Attempting to parse: {new_date}')
-        try:
-            date_object = datetime.strptime(new_date, '%m/%d/%Y %H:%M:%S')
-            print(f'parsed date: {date_object}')
-            return date_object, message
-        except (ValueError, TypeError):
-            print(f'Failed to parse date')
+        new_date = datefinder.find_dates(log_line)
+        if new_date != None or 0 or "":
+            print("No date found, returning...")
+            return 1, 1
+        else:
+            print(f'Received: {log_line}')
+
+            logging.info(f'removing {new_date} from {log_line}')
+            message = log_line.replace(new_date + ':', '').strip()
+            print(f'message is now: {message}')
             return new_date, message
