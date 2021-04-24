@@ -34,6 +34,7 @@ class ValheimLogDog:
             'online':False,
         }
         self.active = True
+        self.start()
 
     def set_activity_state(self):
         # Closes this thread when program exits
