@@ -101,14 +101,16 @@ class Events(commands.Cog):
             "failed Odin's test",
             "In Soviet Russia, tree fell you!"
         ]
+        rng_death_msg = random.choice(death_message)
         # Knights of Ni Bot Spam Channel ID: 831250902470885406
+        default.s_print(f'Death event for {player_name} {rng_death_msg}')
         bot_spam = self.bot.channel.get(831250902470885406)
-        bot_spam.send(f'RIP {player_name} {random.choice(death_message)}\nTotal Vikings lost: {death_count}')
+        bot_spam.send(f'RIP {player_name} {rng_death_msg}\nTotal Vikings lost: {death_count}')
 
-    @commands.Cog.listener()
-    async def on_disconnect(self):
-        print('disconnect event received, closing down: ')
-        self.bot.close()
+    # @commands.Cog.listener()
+    # async def on_disconnect(self):
+    #     print('disconnect event received, closing down: ')
+    #     self.bot.close()
 
 def setup(bot):
     bot.add_cog(Events(bot))
