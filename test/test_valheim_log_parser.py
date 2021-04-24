@@ -24,7 +24,7 @@ class TestValheimLogParser(unittest.TestCase):
         # remove_date method expects no prefix!
         message_without_prefix = LogLine.remove_text_inside_brackets(self.log_line)
         date, message = LogLine.remove_date(message_without_prefix)
-        self.assertEqual(date, datetime(2021, 4, 12, 19, 55, 55))
+        self.assertEqual(date, "04/12/2021 19:55:55")
         self.assertEqual(message, 'Closing socket 76561197999876368')
 
    
