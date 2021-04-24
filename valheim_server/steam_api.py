@@ -3,6 +3,8 @@ from utils import default
 
 config = default.config()
 
+# SteamWebAPI: https://developer.valvesoftware.com/wiki/Steam_Web_API 
+
 class SteamIntegration():
     def __init__(self):
         self.api = WebAPI(key=config['steam_api_key'])
