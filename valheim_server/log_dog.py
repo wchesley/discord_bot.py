@@ -16,7 +16,6 @@ from utils import default, http
 from data.mongoDB import MongoDB_Context
 from .log_parser import LogLine
 # from . import steam_api
-from utils.default import s_print
 
 SLEEP_SECONDS = 1
 
@@ -38,30 +37,30 @@ class ValheimLogDog:
 
     def set_activity_state(self):
         # Closes this thread when program exits
-        s_print("Kill signal set: ")
+        default.s_print("Kill signal set: ")
         self.active = False
 
     def start(self):
-        s_print(f"Fetching log file at: {self.config['log_file']}")
+        default.s_print(f"Fetching log file at: {self.config['log_file']}")
         while self.active == True:
             with open(self.config['log_file'], 'r') as log_file:
-                s_print(f'opened context for log file at: {log_file}')
+                default.s_print(f'opened context for log file at: {log_file}')
                 for new_lines in self.line_watcher(log_file):
-                    s_print(f'Processing the lines found...')
+                    default.s_print(f'Processing the lines found...')
                     new_lines = self.filter_lines(new_lines)
-                    s_print(f'\t> Processed lines: {new_lines}')
+                    default.s_print(f'\t> Processed lines: {new_lines}')
 
                     for line in new_lines:
                         #parse lines read here:
-                        s_print(f'OG Line: {line}')
+                        default.s_print(f'OG Line: {line}')
                         log_line = LogLine.remove_text_inside_brackets(line)
-                        s_print(f'log_line?: {log_line}')
+                        default.s_print(f'log_line?: {log_line}')
                         date, message = LogLine.remove_date(log_line)
                         if date or message == 1:
-                            s_print('no date found, ignoring')
+                            default.s_print('no date found, ignoring')
                         else:
                             self.extract_log_parts(message, date)
-        s_print('closing log file')                            
+        default.s_print('closing log file')                            
         log_file.close()
 
     def line_watcher(self, file):
@@ -74,14 +73,14 @@ class ValheimLogDog:
             new_lines = file.readlines()
             # sleep if file hasn't been updated
             if not new_lines:
-                s_print(f'No new lines. Sleeping {SLEEP_SECONDS}')
+                # default.s_print(f'No new lines. Sleeping {SLEEP_SECONDS}')
                 time.sleep(SLEEP_SECONDS) # sleep handled by asyncio event loop in /cogs/valheim_log_cog.py
                 #await asyncio.sleep(1)
                 continue
-            s_print('New line(s) found!')
+            default.s_print('New line(s) found!')
 
             for l in new_lines:
-                s_print('\t> {}'.format(l.replace('\n', '')))
+                default.s_print('\t> {}'.format(l.replace('\n', '')))
 
             yield new_lines
     
@@ -97,10 +96,10 @@ class ValheimLogDog:
         zDOID_connect = 'Got character ZDOID from '
         current_connections = 'Connections'
         disconnect = "Closing Socket "
-        s_print(f'message: {message}')
+        default.s_print(f'message: {message}')
         if steam_connect_msg in message:
             self.data['SteamID'] = message.replace(steam_connect_msg, '')
-            default.s_print(f"STEAMID: {self.data['SteamID']}")
+            default.default.s_print(f"STEAMID: {self.data['SteamID']}")
             self.data['steam_login_time'] = date
             self.data['SteamName'] = self.get_steam_persona(self.data['SteamID'])
             return self.data['SteamID']
@@ -111,7 +110,7 @@ class ValheimLogDog:
                 toon = split[4] # Should be ZDOID (in game toon name)
                 # Don't want to update database while testing...
                 new_death_count = MongoDB_Context.update_death_count(1)
-                default.s_print(f'new death count: {new_death_count}')
+                default.default.s_print(f'new death count: {new_death_count}')
                 self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: 
                 return f'{toon} death!'
             else: 
@@ -121,7 +120,7 @@ class ValheimLogDog:
                 self.data['ZDOID_login_time'] = date
                 return self.data['ZDOID']
         elif current_connections in message: 
-            s_print(f'current connections: {message}')
+            default.s_print(f'current connections: {message}')
             connections = message.split(' ')
             # log message should look like: 'Connections 1 ZDOS:130588  sent:0 recv:422'
             return connections[1]
@@ -144,9 +143,9 @@ class ValheimLogDog:
         # SteamWebAPI: https://developer.valvesoftware.com/wiki/Steam_Web_API
         # try:
         #     self.data['SteamName'] = SteamIDToVanityName(steamID)
-        #     s_print(f"Found Steam Name: {self.data['SteamName']}")
+        #     default.s_print(f"Found Steam Name: {self.data['SteamName']}")
         # except Exception as e:
-        #     s_print(f'Error getting Steam Name: {e}')
+        #     default.s_print(f'Error getting Steam Name: {e}')
         if steamID is None or " ":
             steamID = self.data['SteamID']
         steam_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.config['steam_api_key']}&steamids={steamID}"
