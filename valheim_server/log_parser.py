@@ -2,9 +2,9 @@ import os
 import re
 import logging
 import datetime
-import datefinder
 
 from datetime import datetime
+from utils import default
 
 
 class LogLine:
@@ -32,23 +32,38 @@ class LogLine:
                     saved_chars.append(character)
         # Rejoin the characters into a string: 
         message = ''.join(saved_chars)
-        print(f'Messsage before strip: {message}')
+        default.s_print(f'Messsage before strip: {message}')
         # Remove any trailing or leading whitespace
         message = message.strip()
-        print(f'returning: {message}')
+        default.s_print(f'returning: {message}')
         return message
 
     def remove_date(log_line):
         """ Remove date from valheim server log message, retuns message and date as datetime object."""
         # Incoming format has to be: 04/12/2021 19:55:55: Closing socket 76561197999876368
-        new_date = datefinder.find_dates(log_line)
-        if new_date != None or 0 or "":
-            print("No date found, returning...")
-            return 1, 1
-        else:
-            print(f'Received: {log_line}')
+        #log_line = log_line.strip() # Remove leading and trailing whitespace: 
+        default.s_print(f'Received: \n{log_line}\n^^^ REMOVE_DATE()')
+        new_date = LogLine.strip_date_from_string(log_line)
+        message = log_line.replace(str(new_date) + ': ','')
+        default.s_print(f'New date type: {type(new_date)}\nData: {new_date}\nMessage type: {type(message)}\nData: {message}')
+        return new_date, message
 
-            logging.info(f'removing {new_date} from {log_line}')
-            message = log_line.replace(new_date + ':', '').strip()
-            print(f'message is now: {message}')
-            return new_date, message
+
+    def strip_date_from_string(date, removal_char=':'):
+        count = 0
+        #removal_char = ':'
+        date_chars = ''
+        for char in date:
+            if char == removal_char:
+                count += 1
+            if count == 3:
+                break
+            date_chars += char
+        date_string = "".join(date_chars)
+        # try:
+        #     date_string = datetime.strptime(date_string, "%m/%d/%Y %H:%M:%S")
+        #     return date_string
+        # except ValueError as e:
+        #     default.s_print(f"error parsing date: {e}")
+        default.s_print(f'strip date from string: {date_string}')
+        return date_string
