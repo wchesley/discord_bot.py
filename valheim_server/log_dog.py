@@ -111,7 +111,7 @@ class ValheimLogDog:
                 # Don't want to update database while testing...
                 new_death_count = MongoDB_Context.update_death_count(1)
                 default.s_print(f'new death count: {new_death_count}')
-                # self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: 
+                self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: 
                 return f'{toon} death!'
             else: 
                 full_message = message.replace(zDOID_connect,'')
