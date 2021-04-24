@@ -10,7 +10,7 @@ from valheim_server.log_dog import ValheimLogDog
 
 # tracemalloc.start()
 config = default.config()
-print("Logging in...")
+default.s_print("Logging in...")
 
 bot = Bot(
     command_prefix=config["prefix"], prefix=config["prefix"],
@@ -41,15 +41,15 @@ for file in os.listdir("cogs"):
 #     print(f'error getting log file: {e}')
 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
     try:
-        print('starting log_dog: ')
+        default.s_print('starting log_dog: ')
         log = "null?"
         try:
             log = executor.submit(ValheimLogDog.start, bot)
         except Exception as e:
-            print(f'log thread state?: {log.running()}\nERROR: {e}')
-        print(f'log_thread state: {log.running()}')
+            default.s_print(f'log thread state?: {log.running()}\nERROR: {e}')
+        default.s_print(f'log_thread state: {log.running()}')
         executor.submit(bot.run(config["token"]))
     except Exception as e:
-        print(f'other error: {e}')
+        default.s_print(f'other error: {e}')
         sys.exit()
     
