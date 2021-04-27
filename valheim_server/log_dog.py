@@ -9,15 +9,14 @@ import os
 import discord
 import logging
 import time
-import aiofiles
 import asyncio
 import random
-import concurrent.futures
+import json
 
 from utils import default, http
 from data.mongoDB import MongoDB_Context
 from .log_parser import LogLine
-from functools import wraps, partial
+from datetime import datetime
 # from . import steam_api
 
 SLEEP_SECONDS = 1
@@ -35,18 +34,6 @@ class ValheimLogDog:
             'ZDOID_login_time':'',
             'online':False,
         }
-        #self.loop = asyncio.new_event_loop()
-        #self.start()
-
-    def wrap(func):
-        @wraps(func)
-        async def run(*args, loop=None, executor=None, **kwargs):
-            if loop is None:
-                loop = asyncio.get_event_loop()
-            pfunc = partial(func, *args, **kwargs)
-            return await loop.run_in_executor(executor, pfunc)
-        return run 
-
     
     async def start(self):
         default.s_print(f"Fetching log file at: {self.config['log_file']}")
@@ -66,7 +53,19 @@ class ValheimLogDog:
                         date, message = LogLine.remove_date(log_line)
                         default.s_print(f'DATE: {date}\nMESSAGE: {message}')
                         await self.extract_log_parts(message, date)
-                        default.s_print(f'****Processed log lines COMPLETE*****')   
+                        default.s_print(f'****Processed log lines COMPLETE*****\nBEGIN DATA CHECK:')
+                        if self.data['steam_login_time'] and self.data['ZDOID_login_time']:
+                            default.s_print('Have login times! ')
+                            if self.compare_login_time(self.data['steam_login_time'], self.data['ZDOID_login_time']):
+                                default.s_print('login times are within two minutes, close enough for a match!')
+                                MongoDB_Context.update_player(self.data)
+                                default.s_print(f'added or updated player!')
+                                self.clear_data()
+                                default.s_print(f'data cleared')
+                            else:
+                                default.s_print(f'Times arent close enough')
+                        else:
+                            default.s_print(f'do not have one or the other login time. ')
         default.s_print('closing log file')                            
         log_file.close()
 
@@ -128,6 +127,7 @@ class ValheimLogDog:
                 
                 try:
                     default.s_print(f'Death event???')
+                    MongoDB_Context.update_player_death_count(toon)
                     # object NoneType can't be used in 'await' expression: 
                     #await self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: Not working atm? Dunnow why?
                     await self.manual_on_death_event(toon, new_death_count)
@@ -146,17 +146,37 @@ class ValheimLogDog:
             # log message should look like: 'Connections 1 ZDOS:130588  sent:0 recv:422'
             return connections[1]
         elif disconnect in message:
-            return message.replace(disconnect,'') # Should be steamID of player who disconnected
+            disconnection = message.replace(disconnect,'') # Should be steamID of player who disconnected
+            MongoDB_Context.player_disconnect(disconnection)
+            return disconnection
 
     def compare_login_time(self, steam_login_time, zdoid_login_time):
         # TODO: Convert strings to datetime objects here: 
-        # Reasoning: It's easier to deal with strings, only need actual datetime objects for this calculation: 
-        time_diff = steam_login_time - zdoid_login_time
-        time_diff = abs(time_diff.total_seconds()) # steam login comes first, value SHOULD be negative.
-        if time_diff < 120:
-            return True
-        else:
+        # Reasoning: It's easier to deal with strings, only need actual datetime objects for this calculation:
+        default.s_print(f'*****Comparing: {steam_login_time} to {zdoid_login_time}')
+        steam_dto = ''
+        zdoid_dto = ''
+        try:
+            steam_dto = datetime.strptime(steam_login_time, "%m/%d/%Y %H:%M:%S")
+        except Exception as e:
+            default.s_print(f'could not parse steam login time:{steam_login_time}\nERROR: {e}')
             return False
+        try:
+            zdoid_dto = datetime.strptime(zdoid_login_time, "%m/%d/%Y %H:%M:%S")
+        except Exception as e:
+            default.s_print(f'could not parse zdoid login time:{zdoid_login_time}\nERROR: {e}')
+            return False
+        if isinstance(steam_dto, str) or isinstance(zdoid_dto, str):
+            default.s_print(f'Someone was a string? ')
+            return False
+        else:
+            time_diff = steam_dto - zdoid_dto
+            time_diff = abs(time_diff.total_seconds()) # steam login comes first, value SHOULD be negative.
+            if time_diff < (60 * 2): # 5 minute timeout
+                self.data['steam_login_time'] = steam_dto
+                return True
+            else:
+                return False
 
     async def get_steam_persona(self, steamID):
         # More import errors I don't feel like debugging anymore: 
@@ -173,9 +193,13 @@ class ValheimLogDog:
         steam_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.config['steam_api_key']}&steamids={steamID}"
         try:
             response = await http.get(steam_url)
-            self.data['SteamName'] = response['response']['players'][0]['personaname']
+            # default.s_print(f'RESPONSE OBJECT: {response}')
+            response = json.loads(response)
+            first_player = response['response']['players'][0]
+            self.data['SteamName'] = first_player['personaname']
         except Exception as e:
             default.s_print(f'Error {e}')
+        default.s_print(f'SteamName?: {self.data["SteamName"]}')
         return self.data['SteamName']
 
     async def manual_on_death_event(self, player_name, death_count):
@@ -195,3 +219,15 @@ class ValheimLogDog:
         default.s_print(f'MANUAL Death event for {player_name} {rng_death_msg}')
         bot_spam = self.bot.get_channel(831250902470885406)
         await bot_spam.send(f'RIP {player_name} {rng_death_msg}\nTotal Vikings lost: {death_count}')
+
+    def clear_data(self):
+        """ Clear out self.data store after flushing data to DB """
+        self.data = {
+            'SteamID':'',
+            'SteamName':'',
+            'ZDOID':'',
+            'steam_login_time':'',
+            'ZDOID_login_time':'',
+            'online':False,
+        }
+        return self.data
