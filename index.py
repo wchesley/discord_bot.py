@@ -1,8 +1,8 @@
 import os, tracemalloc, sys
 import discord
 import logging
+import asyncio
 
-from threading import Thread
 from utils import default
 from utils.data import Bot, HelpFormat
 from data.mongoDB import MongoDB_Context
@@ -28,8 +28,7 @@ for file in os.listdir("cogs"):
         logging.info(f'Loaded extension: {name}')
 
 try:
-    log_dog = Thread(target=ValheimLogDog, args=(bot,), daemon=True)
-    log_dog.start()
+    asyncio.get_event_loop().create_task(ValheimLogDog(bot).start())
     bot.run(config['token'])
 except (KeyboardInterrupt, SystemExit) as e:
     default.s_print(f"EXIT RECEIVED: {e}")
