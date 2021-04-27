@@ -11,10 +11,13 @@ import logging
 import time
 import aiofiles
 import asyncio
+import random
+import concurrent.futures
 
 from utils import default, http
 from data.mongoDB import MongoDB_Context
 from .log_parser import LogLine
+from functools import wraps, partial
 # from . import steam_api
 
 SLEEP_SECONDS = 1
@@ -32,20 +35,25 @@ class ValheimLogDog:
             'ZDOID_login_time':'',
             'online':False,
         }
-        self.active = True
-        self.start()
+        #self.loop = asyncio.new_event_loop()
+        #self.start()
 
-    def set_activity_state(self):
-        # Closes this thread when program exits
-        default.s_print("Kill signal set: ")
-        self.active = False
+    def wrap(func):
+        @wraps(func)
+        async def run(*args, loop=None, executor=None, **kwargs):
+            if loop is None:
+                loop = asyncio.get_event_loop()
+            pfunc = partial(func, *args, **kwargs)
+            return await loop.run_in_executor(executor, pfunc)
+        return run 
 
-    def start(self):
+    
+    async def start(self):
         default.s_print(f"Fetching log file at: {self.config['log_file']}")
-        while self.active == True:
-            with open(self.config['log_file'], 'r') as log_file:
+        while True:
+            with open(self.config['log_file'], 'r', os.O_NONBLOCK) as log_file:
                 default.s_print(f'opened context for log file at: {log_file}')
-                for new_lines in self.line_watcher(log_file):
+                async for new_lines in self.line_watcher(log_file):
                     default.s_print(f'Processing the lines found...')
                     new_lines = self.filter_lines(new_lines)
                     default.s_print(f'\t> Processed lines: {new_lines}')
@@ -56,14 +64,13 @@ class ValheimLogDog:
                         log_line = LogLine.remove_text_inside_brackets(line)
                         default.s_print(f'log_line?: {log_line}')
                         date, message = LogLine.remove_date(log_line)
-                        if date or message == 1:
-                            default.s_print('no date found, ignoring')
-                        else:
-                            self.extract_log_parts(message, date)
+                        default.s_print(f'DATE: {date}\nMESSAGE: {message}')
+                        await self.extract_log_parts(message, date)
+                        default.s_print(f'****Processed log lines COMPLETE*****')   
         default.s_print('closing log file')                            
         log_file.close()
 
-    def line_watcher(self, file):
+    async def line_watcher(self, file):
         """Generator function that returns the new line entered."""
 
         file.seek(0, os.SEEK_END)
@@ -73,9 +80,9 @@ class ValheimLogDog:
             new_lines = file.readlines()
             # sleep if file hasn't been updated
             if not new_lines:
-                # default.s_print(f'No new lines. Sleeping {SLEEP_SECONDS}')
-                time.sleep(SLEEP_SECONDS) # sleep handled by asyncio event loop in /cogs/valheim_log_cog.py
-                #await asyncio.sleep(1)
+                # default.s_print(f'No new lines. Sleeping {SLEEP_SECONDS}') # Too spammy for testing
+                #time.sleep(SLEEP_SECONDS) # sleep handled by asyncio event loop in /cogs/valheim_log_cog.py
+                await asyncio.sleep(SLEEP_SECONDS)
                 continue
             default.s_print('New line(s) found!')
 
@@ -88,7 +95,7 @@ class ValheimLogDog:
         """Filters the log lines to only return the ones that have actual values."""
         return [l for l in lines if l != '\n' and len(l) > 1]
 
-    def extract_log_parts(self, message, date):
+    async def extract_log_parts(self, message, date):
         """Get the goods from the valheim log message"""
         # Trailing space on the end is intentional, needed to remove that part of the log message
         # Return messages are used to verify data in the tests
@@ -97,11 +104,17 @@ class ValheimLogDog:
         current_connections = 'Connections'
         disconnect = "Closing Socket "
         default.s_print(f'message: {message}')
+        default.s_print(f'Date: {date}')
+        # if/elif block to determine what we found in log message: 
         if steam_connect_msg in message:
             self.data['SteamID'] = message.replace(steam_connect_msg, '')
-            default.default.s_print(f"STEAMID: {self.data['SteamID']}")
             self.data['steam_login_time'] = date
-            self.data['SteamName'] = self.get_steam_persona(self.data['SteamID'])
+            steam_id = 'no async error maybe?'
+            try:
+                default.s_print(f'Starting steam loop: ')
+                steam_id = await self.get_steam_persona(self.data['SteamID'])
+            except Exception as e:
+                default.s_print(f'ASYNC ERROR: {e}')
             return self.data['SteamID']
         elif zDOID_connect in message:
             # Death message: Got character ZDOID from Bytes : 0:0
@@ -110,8 +123,16 @@ class ValheimLogDog:
                 toon = split[4] # Should be ZDOID (in game toon name)
                 # Don't want to update database while testing...
                 new_death_count = MongoDB_Context.update_death_count(1)
-                default.default.s_print(f'new death count: {new_death_count}')
-                self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: 
+                default.s_print(f'new death count: {new_death_count}')
+                death_event = 'no async error maybe?'
+                
+                try:
+                    default.s_print(f'Death event???')
+                    # object NoneType can't be used in 'await' expression: 
+                    #await self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: Not working atm? Dunnow why?
+                    await self.manual_on_death_event(toon, new_death_count)
+                except Exception as e:
+                    default.s_print(f'ASYNC ERROR: {e}')
                 return f'{toon} death!'
             else: 
                 full_message = message.replace(zDOID_connect,'')
@@ -146,8 +167,31 @@ class ValheimLogDog:
         #     default.s_print(f"Found Steam Name: {self.data['SteamName']}")
         # except Exception as e:
         #     default.s_print(f'Error getting Steam Name: {e}')
+        default.s_print(f'Getting steam name from {steamID}')
         if steamID is None or " ":
             steamID = self.data['SteamID']
         steam_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.config['steam_api_key']}&steamids={steamID}"
-        response = http.get(steam_url) 
-        return await response['response']['players'][0]['personaname']
+        try:
+            response = await http.get(steam_url)
+            self.data['SteamName'] = response['response']['players'][0]['personaname']
+        except Exception as e:
+            default.s_print(f'Error {e}')
+        return self.data['SteamName']
+
+    async def manual_on_death_event(self, player_name, death_count):
+        """ Announce death of player in valheim Server """
+        death_message = [ 
+            "was squased by a troll",
+            "fell victim to gredwarves",
+            "ascended to the 10th dead world",
+            "was fondled by greylings",
+            "took a deathsquito from behind",
+            "was collected by the Valkyrie",
+            "failed Odin's test",
+            "In Soviet Russia, tree fell you!"
+        ]
+        rng_death_msg = random.choice(death_message)
+        # Knights of Ni Bot Spam Channel ID: 831250902470885406
+        default.s_print(f'MANUAL Death event for {player_name} {rng_death_msg}')
+        bot_spam = self.bot.get_channel(831250902470885406)
+        await bot_spam.send(f'RIP {player_name} {rng_death_msg}\nTotal Vikings lost: {death_count}')
