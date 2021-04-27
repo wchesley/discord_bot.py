@@ -1,9 +1,9 @@
 import logging
-from data.valheim_player import Player, TotalDeaths, PlayerServerStats
 
+from data.valheim_player import Player, TotalDeaths, PlayerServerStats
 from mongoengine import connect, disconnect, DoesNotExist
 from utils import default
-
+from datetime import datetime
 
 class MongoDB_Context():
     def __init__(self):
@@ -35,14 +35,61 @@ class MongoDB_Context():
         print(f'disconnecting from: {self._connection}')
         return disconnect()
 
-    def create_player(self):
-        pass
+    def update_player(player_obj):
+        try:
+            player = Player.objects.get(steamID=player_obj['SteamID'])
+            if player_obj['SteamName'] != player.steam_name:
+                default.s_print(f'Updating steamName: {player_obj["SteamName"]}')
+                player.steam_name = player_obj['SteamName']
+            else:
+                default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
+            if player_obj['ZDOID'] != player.valheim_name:
+                default.s_print(f'Updating steamName: {player_obj["ZDOID"]}')
+                player.steam_name = player_obj['SteamName']
+            else:
+                default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
+            if player_obj['ZDOID'] != player.valheim_name:
+                default.s_print(f'Updating steamName: {player_obj["ZDOID"]}')
+                player.steam_name = player_obj['SteamName']
+            else:
+                default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
+            try:
+                player.last_login_time = player_obj['steam_logim_time']
+                player.online_state = True
+            except Exception as e:
+                default.s_print(f'Could not save date to DB, setting default time: ')
+                player.last_login_time = datetime.now()
+                player.online_state = True
+            MongoDB_Context.update_online_count(1)
+        except DoesNotExist:
+            player = Player(
+                steamID = player_obj['SteamID'],
+                steam_name = player_obj['SteamName'],
+                valheim_name = player_obj['ZDOID'],
+                death_count = 0,
+                last_login_time = player_obj['steam_login_time'],
+                online_state = True
+            )
+            player.save()
+            default.s_print(f'Created new player: \n{player.steamID} / {player.steam_name} / {player.valheim_name}')
+            MongoDB_Context.update_total_player_count()
 
-    def update_player(self):
-        pass
-
-    def update_online_count(self):
-        pass
+    def update_online_count(count):
+        """ updates online count of players, count can be positive or negative, depending if a player is coming or going. """ 
+        try: 
+            player_server_stats = PlayerServerStats.objects.get(key="242c7b80-314b-4d38-b92b-839035f62382")
+            player_server_stats.online_count += count
+            player_server_stats.save()
+            default.s_print(f'Updated PlayerServerStats: {player_server_stats.online_count}')
+        except DoesNotExist:
+            player_server_stats = PlayerServerStats(
+                key="242c7b80-314b-4d38-b92b-839035f62382",
+                online_count = 1,
+                offline_count = 0,
+                total = 1
+            )
+            player_server_stats.save()
+            default.s_print(f'Created playerServerStats Document')
 
     def update_death_count(new_count):
         # Key: 472bc69c-e35b-4f5a-b3d7-999def8c4e27
@@ -56,5 +103,35 @@ class MongoDB_Context():
             death_object.save()
             return death_object.death_count
 
-    def update_total_player_count(self):
-        pass
+    def update_total_player_count():
+        player_count = len(Player.objects)
+        try:
+            player_server_stats = PlayerServerStats.objects.get(key="242c7b80-314b-4d38-b92b-839035f62382")
+            player_server_stats.total = player_count
+            player_server_stats.save()
+            default.s_print(f'updated total player count: {player_count}')
+        except DoesNotExist:
+            player_server_stats = PlayerServerStats(
+                key="242c7b80-314b-4d38-b92b-839035f62382",
+                online_count = 1,
+                offline_count = 0,
+                total = 1
+            )
+            player_server_stats.save()
+            default.s_print(f'Created playerServerStats Document')
+
+    def player_disconnect(SteamID):
+        try:
+            player = Player.objects.get(steamID=SteamID)
+            player.online_state = False
+        except DoesNotExist:
+            default.s_print(f'Cannot disconnect player not in database!\n{SteamID} Was not found in Database!')
+    
+    def update_player_death_count(zdoid):
+        try:
+            player = Player.objects.get(valheim_name=zdoid)
+            player.death_count += 1
+            player.save()
+            default.s_print(f'updated player death count: {player.death_count}')
+        except Exception as e:
+            default.s_print(f'Something happened? {e}')
