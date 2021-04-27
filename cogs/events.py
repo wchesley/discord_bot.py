@@ -105,7 +105,7 @@ class Events(commands.Cog):
         # Knights of Ni Bot Spam Channel ID: 831250902470885406
         default.s_print(f'Death event for {player_name} {rng_death_msg}')
         bot_spam = self.bot.channel.get(831250902470885406)
-        bot_spam.send(f'RIP {player_name} {rng_death_msg}\nTotal Vikings lost: {death_count}')
+        await bot_spam.send(f'RIP {player_name} {rng_death_msg}\nTotal Vikings lost: {death_count}')
 
     # @commands.Cog.listener()
     # async def on_disconnect(self):
