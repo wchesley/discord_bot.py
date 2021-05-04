@@ -124,6 +124,7 @@ class MongoDB_Context():
         try:
             player = Player.objects.get(steamID=SteamID)
             player.online_state = False
+            MongoDB_Context.update_online_count(-1)
         except DoesNotExist:
             default.s_print(f'Cannot disconnect player not in database!\n{SteamID} Was not found in Database!')
     
