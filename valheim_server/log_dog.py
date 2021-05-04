@@ -59,6 +59,7 @@ class ValheimLogDog:
                             if self.compare_login_time(self.data['steam_login_time'], self.data['ZDOID_login_time']):
                                 default.s_print('login times are within two minutes, close enough for a match!')
                                 MongoDB_Context.update_player(self.data)
+                                default.s_print(f'data obj with player: {self.data}')
                                 default.s_print(f'added or updated player!')
                                 self.clear_data()
                                 default.s_print(f'data cleared')
@@ -126,10 +127,12 @@ class ValheimLogDog:
                 death_event = 'no async error maybe?'
                 
                 try:
-                    default.s_print(f'Death event???')
+                    #default.s_print(f'Death event???')
+                    # Update players death count: 
                     MongoDB_Context.update_player_death_count(toon)
                     # object NoneType can't be used in 'await' expression: 
                     #await self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: Not working atm? Dunnow why?
+                    # 
                     await self.manual_on_death_event(toon, new_death_count)
                 except Exception as e:
                     default.s_print(f'ASYNC ERROR: {e}')
@@ -146,6 +149,7 @@ class ValheimLogDog:
             # log message should look like: 'Connections 1 ZDOS:130588  sent:0 recv:422'
             return connections[1]
         elif disconnect in message:
+            default.s_print(f'Disconnect message received!: {message}')
             disconnection = message.replace(disconnect,'') # Should be steamID of player who disconnected
             MongoDB_Context.player_disconnect(disconnection)
             return disconnection
@@ -230,4 +234,4 @@ class ValheimLogDog:
             'ZDOID_login_time':'',
             'online':False,
         }
-        return self.data
+        default.s_print(f'data obj: {self.data}')
