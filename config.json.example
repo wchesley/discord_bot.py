@@ -11,5 +11,12 @@
   "activity_type": "playing|watching|listening|competing",
   "status_type": "online|idle|dnd",
   "alexflipnote_api": "nice_token_you_got_here",
-  "version": "2.0.2"
+  "version": "2.0.2",
+  "log_file":"",
+  "steam_api_key":"",
+  "db_url":"",
+  "db_user":"",
+  "db_key":"",
+  "db_port":1234,
+  "db_name":""
 }
