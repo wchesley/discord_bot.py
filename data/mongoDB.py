@@ -36,31 +36,38 @@ class MongoDB_Context():
         return disconnect()
 
     def update_player(player_obj):
+        """ 
+        Update or create player in Valheim database. \n
+        Attempts to find player by SteamID, if not found creates a new entry in the database \n
+        Increments Total Player count by 1
+        """
+        default.s_print(f'Received player_obj:')
+        for item in player_obj.items():
+            default.s_print(item)
         try:
             player = Player.objects.get(steamID=player_obj['SteamID'])
+            
             if player_obj['SteamName'] != player.steam_name:
                 default.s_print(f'Updating steamName: {player_obj["SteamName"]}')
                 player.steam_name = player_obj['SteamName']
             else:
-                default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
+                default.s_print(f'Values matched: {player_obj["SteamName"]} == {player.steam_name}')
+
             if player_obj['ZDOID'] != player.valheim_name:
                 default.s_print(f'Updating steamName: {player_obj["ZDOID"]}')
                 player.steam_name = player_obj['SteamName']
             else:
                 default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
-            if player_obj['ZDOID'] != player.valheim_name:
-                default.s_print(f'Updating steamName: {player_obj["ZDOID"]}')
-                player.steam_name = player_obj['SteamName']
-            else:
-                default.s_print(f'Values matched: {player_obj["ZDOID"]} == {player.valheim_name}')
+            
             try:
                 player.last_login_time = player_obj['steam_logim_time']
-                player.online_state = True
             except Exception as e:
-                default.s_print(f'Could not save date to DB, setting default time: ')
+                default.s_print(f'Could not save date to DB, setting default time: \nDATETIME ERROR: {e}')
                 player.last_login_time = datetime.now()
-                player.online_state = True
+
+            player.online_state = True
             MongoDB_Context.update_online_count(1)
+            player.save()
         except DoesNotExist:
             player = Player(
                 steamID = player_obj['SteamID'],
@@ -72,7 +79,9 @@ class MongoDB_Context():
             )
             player.save()
             default.s_print(f'Created new player: \n{player.steamID} / {player.steam_name} / {player.valheim_name}')
+            MongoDB_Context.update_online_count(1)
             MongoDB_Context.update_total_player_count()
+
 
     def update_online_count(count):
         """ updates online count of players, count can be positive or negative, depending if a player is coming or going. """ 
@@ -91,15 +100,18 @@ class MongoDB_Context():
             player_server_stats.save()
             default.s_print(f'Created playerServerStats Document')
 
-    def update_death_count(new_count):
+    def update_death_count():
         # Key: 472bc69c-e35b-4f5a-b3d7-999def8c4e27
         try:
             death_object = TotalDeaths.objects.get(key='472bc69c-e35b-4f5a-b3d7-999def8c4e27')
-            death_object.death_count += new_count
+            death_object.death_count += 1
             death_object.save()
             return death_object.death_count
         except DoesNotExist as e:
-            death_object = TotalDeaths(death_count=1,key='472bc69c-e35b-4f5a-b3d7-999def8c4e27')
+            death_object = TotalDeaths(
+                key='472bc69c-e35b-4f5a-b3d7-999def8c4e27',
+                death_count=1,
+                )
             death_object.save()
             return death_object.death_count
 
@@ -115,7 +127,7 @@ class MongoDB_Context():
                 key="242c7b80-314b-4d38-b92b-839035f62382",
                 online_count = 1,
                 offline_count = 0,
-                total = 1
+                total = player_count
             )
             player_server_stats.save()
             default.s_print(f'Created playerServerStats Document')

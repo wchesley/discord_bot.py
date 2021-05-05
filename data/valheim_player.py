@@ -3,7 +3,6 @@ from mongoengine import *
 class Player(Document):
     steamID = StringField(max_length=17,required=True,primary_key=True)
     steam_name = StringField(max_length=48)
-    # valheim_player_id = StringField(max_length=25)
     valheim_name = StringField(max_length=25)
     death_count = IntField(min_value=0)
     last_login_time = DateTimeField()
@@ -13,8 +12,6 @@ class TotalDeaths(Document):
     # We'll only be keeping one record of all deaths in the server, so only need one key: 472bc69c-e35b-4f5a-b3d7-999def8c4e27
     key = UUIDField(primary_key=True,default_value="472bc69c-e35b-4f5a-b3d7-999def8c4e27")
     death_count = IntField(min_value=0)
-    # def __init__(self, death_count):
-    #     self.death_count = death_count
 
 class PlayerServerStats(Document):
     key = UUIDField(primary_key=True, default_value="242c7b80-314b-4d38-b92b-839035f62382")

@@ -12,6 +12,7 @@ import time
 import asyncio
 import random
 import json
+import steam.webapi
 
 from utils import default, http
 from data.mongoDB import MongoDB_Context
@@ -109,10 +110,10 @@ class ValheimLogDog:
         if steam_connect_msg in message:
             self.data['SteamID'] = message.replace(steam_connect_msg, '')
             self.data['steam_login_time'] = date
-            steam_id = 'no async error maybe?'
+            steam_name = 'no async error maybe?'
             try:
-                default.s_print(f'Starting steam loop: ')
-                steam_id = await self.get_steam_persona(self.data['SteamID'])
+                steam_name = self.get_steam_persona(self.data['SteamID'])
+                default.s_print(f'RECEIVED: {steam_name} FROM STEAM')
             except Exception as e:
                 default.s_print(f'ASYNC ERROR: {e}')
             return self.data['SteamID']
@@ -122,13 +123,11 @@ class ValheimLogDog:
                 split = message.split(' ')
                 toon = split[4] # Should be ZDOID (in game toon name)
                 # Don't want to update database while testing...
-                new_death_count = MongoDB_Context.update_death_count(1)
+                new_death_count = MongoDB_Context.update_death_count()
                 default.s_print(f'new death count: {new_death_count}')
                 death_event = 'no async error maybe?'
                 
                 try:
-                    #default.s_print(f'Death event???')
-                    # Update players death count: 
                     MongoDB_Context.update_player_death_count(toon)
                     # object NoneType can't be used in 'await' expression: 
                     #await self.bot.dispatch('on_death', new_death_count, toon) ## Emmit death event: Not working atm? Dunnow why?
@@ -182,7 +181,7 @@ class ValheimLogDog:
             else:
                 return False
 
-    async def get_steam_persona(self, steamID):
+    def get_steam_persona(self, steamID):
         # More import errors I don't feel like debugging anymore: 
         # Instead I"ll just utalize the http class and make requests the old fashioned way
         # SteamWebAPI: https://developer.valvesoftware.com/wiki/Steam_Web_API
@@ -191,14 +190,16 @@ class ValheimLogDog:
         #     default.s_print(f"Found Steam Name: {self.data['SteamName']}")
         # except Exception as e:
         #     default.s_print(f'Error getting Steam Name: {e}')
-        default.s_print(f'Getting steam name from {steamID}')
+        steam_api = steam.webapi.WebAPI(key=self.config['steam_api_key'])
+        default.s_print(f'Getting steam name for {steamID}')
         if steamID is None or " ":
             steamID = self.data['SteamID']
         steam_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.config['steam_api_key']}&steamids={steamID}"
         try:
-            response = await http.get(steam_url)
-            # default.s_print(f'RESPONSE OBJECT: {response}')
-            response = json.loads(response)
+            # response = await http.get(steam_url)
+            response = steam_api.call('ISteamUser.GetPlayerSummaries',steamids=steamID)
+            default.s_print(f'RESPONSE OBJECT: {response}')
+            #response = json.loads(response)
             first_player = response['response']['players'][0]
             self.data['SteamName'] = first_player['personaname']
         except Exception as e:
