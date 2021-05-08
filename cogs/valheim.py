@@ -95,12 +95,26 @@ class Valheim(commands.Cog):
             await ctx.send(f"Sending you a private message with server public IP **{ctx.author.name}**")
         await ctx.author.send(f"🎁 **Public IP:**\n{ip}")
 
-    @commands.command()
-    @commands.is_owner()
-    async def update_death(self,ctx):
-        """Bytes utility method to artificially increase total death count"""
-        count = MongoDB_Context.update_death_count(mongo,1)
-        await ctx.send(f"Increased death count, we up to: {count}")
+    # @commands.command()
+    # @commands.is_owner()
+    # async def update_death(self,ctx):
+    #     """Bytes utility method to artificially increase total death count"""
+    #     count = MongoDB_Context.update_death_count(mongo,1)
+    #     await ctx.send(f"Increased death count, we up to: {count}")
+
+    @commands.command(aliases=['death_count','my_deaths'])
+    async def retreive_player_death_count(self,ctx,zdoid):
+        player = mongo.get_player_by_zdoid(zdoid)
+        if player != 1:
+            await ctx.send(f"Congradulations {player.valheim_name}!\nYou've died {player.death_count} times!")
+        else: 
+            await ctx.send(f"Sorry, I could not find who you are looking for!")
+
+    @commands.command(aliases=['player_stats'])
+    async def get_valheim_player(self, ctx, query):
+        player = mongo.icontains_get_player_by_zdoid(query)
+        if player != 1:
+            await ctx.send(f'{player.valheim_name} was last seen on {player.last_login_time.strftime("%m/%d/%Y")}\nTotal Deaths: {player.death_countazsq}')
 
  
 def setup(bot):
