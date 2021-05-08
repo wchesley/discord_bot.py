@@ -148,3 +148,42 @@ class MongoDB_Context():
             default.s_print(f'updated player death count: {player.death_count}')
         except Exception as e:
             default.s_print(f'Something happened? {e}')
+
+    def get_player_by_zdoid(zdoid):
+        """ Find player by their valheim name, return their player object""" 
+        try: 
+            player = Player.objects.get(valheim_name=zdoid)
+            return player
+        except Exception as e:
+            default.s_print(f'Error getting player:\nget_player_death_count threw: \n\t{e}')
+            return 1
+    
+    def get_player_by_steam_id(steamID):
+        try: 
+            player = Player.objects.get(steamID=steamID)
+            return player
+        except Exception as e:
+            default.s_print(f'Error getting player:\nget_player_by_steam_id threw:\n\t {e}')
+            return 1
+
+    def get_player_by_any_means(searchQuery):
+        steamIDorZdoid = searchQuery.isnumeric()
+        player = 1 # assume error by default? 
+        if steamIDorZdoid:
+            player = MongoDB_Context.get_player_by_steam_id(searchQuery)
+            return player
+        elif player == 1 and steamIDorZdoid == False:
+            player = MongoDB_Context.get_player_by_zdoid(searchQuery)
+            return player
+        elif player == 1:
+            return player # should only be here if we didn't find anything at all!
+
+    def icontains_get_player_by_zdoid(zdoid):
+        """ Search for player by valheim name using mongonengine icontains. Returns all 
+        possible matches for the quersy in a case INsensitive manor""" 
+        try:
+            player = Player.objects.get(zdoid__icontains=zdoid)
+            return player
+        except Exception as e:
+            default.s_print(f'Error finding player via icontains: {e}')
+            return 1
